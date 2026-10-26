@@ -1,9 +1,17 @@
-"""
-Environmental Intelligence & Multimodal Remote Sensing Dashboard.
+"""Environmental Intelligence & Multimodal Remote Sensing Dashboard.
+
 Interactive Streamlit application for analyzing paired Sentinel-1 SAR and Sentinel-2 Optical
 observations, flood segmentation ground truth, and environmental indicators.
 """
+
+import sys
 from pathlib import Path
+
+# Ensure project root is in sys.path when launched from streamlit
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 import numpy as np
 import streamlit as st
 import matplotlib
@@ -17,7 +25,7 @@ from src.evaluation.metrics import compute_segmentation_metrics
 st.set_page_config(
     page_title="Multimodal EO Intelligence",
     page_icon="🛰️",
-    layout="wide"
+    layout="wide",
 )
 
 # Custom header styling
@@ -31,10 +39,9 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Locate raw data directory
-BASE_DIR = Path(__file__).resolve().parents[2]
-RAW_DIR = BASE_DIR / "data" / "raw" / "sen1floods11"
+RAW_DIR = PROJECT_ROOT / "data" / "raw" / "sen1floods11"
 if not RAW_DIR.exists():
-    RAW_DIR = BASE_DIR / "data" / "raw"
+    RAW_DIR = PROJECT_ROOT / "data" / "raw"
 
 LBL_DIR = RAW_DIR / "LabelHand"
 S1_DIR = RAW_DIR / "S1Hand"
@@ -43,18 +50,17 @@ S2_DIR = RAW_DIR / "S2Hand"
 # Discover available chips
 chip_files = list(LBL_DIR.glob("*_LabelHand.tif")) if LBL_DIR.exists() else []
 if not chip_files:
-    # Check fallback in raw
     chip_files = list(RAW_DIR.glob("*_label.tif")) + list(RAW_DIR.glob("*_LabelHand.tif"))
 
-chip_names = [f.name.replace("_LabelHand.tif", "").replace("_label.tif", "") for f in chip_files]
+chip_names = sorted([f.name.replace("_LabelHand.tif", "").replace("_label.tif", "") for f in chip_files])
 
-# Sidebar
+# Sidebar Controls
 st.sidebar.header("Observation Selection")
 if not chip_names:
-    st.sidebar.warning("No image chips found on disk yet. Please run download_sen1floods11.py")
+    st.sidebar.warning("No image chips found on disk. Please run download_sen1floods11.py to download datasets.")
     st.stop()
 
-selected_chip = st.sidebar.selectbox("Select Satellite Scene", sorted(chip_names))
+selected_chip = st.sidebar.selectbox("Select Satellite Scene", chip_names)
 s2_display_mode = st.sidebar.radio(
     "Optical Visualization Mode",
     ["True Color RGB (B4, B3, B2)", "Color Infrared NIR (B8, B4, B3)", "Normalized Difference Water Index (NDWI)"]
@@ -73,26 +79,29 @@ st.sidebar.markdown("""
   - 🟦 **Blue (1):** Flood & Open Water
 """)
 
-# Load and preprocess using identical pipeline as training
-s1_path = S1_DIR / f"{selected_chip}_S1Hand.tif"
-if not s1_path.exists():
-    s1_path = RAW_DIR / "test_s1.tif"
+# Load and preprocess with caching
+@st.cache_data(show_spinner=False)
+def load_chip_data(chip_id: str):
+    s1_path = S1_DIR / f"{chip_id}_S1Hand.tif"
+    s2_path = S2_DIR / f"{chip_id}_S2Hand.tif"
+    lbl_path = LBL_DIR / f"{chip_id}_LabelHand.tif"
 
-s2_path = S2_DIR / f"{selected_chip}_S2Hand.tif"
-if not s2_path.exists():
-    s2_path = RAW_DIR / "test_s2.tif"
+    if not s1_path.exists() or not s2_path.exists():
+        return None
 
-lbl_path = LBL_DIR / f"{selected_chip}_LabelHand.tif"
-if not lbl_path.exists():
-    lbl_path = RAW_DIR / "test_label.tif"
+    data = load_and_preprocess_pair(s1_path, s2_path, lbl_path)
+    return data
 
-data = load_and_preprocess_pair(s1_path, s2_path, lbl_path)
-s1_arr = data["s1"]        # (2, 512, 512)
-s2_arr = data["s2"]        # (13, 512, 512)
-mask_arr = data["mask"]    # (512, 512)
+chip_data = load_chip_data(selected_chip)
+if chip_data is None:
+    st.error(f"Could not load raster files for chip: {selected_chip}")
+    st.stop()
+
+s1_arr = chip_data["s1"]        # (2, 512, 512)
+s2_arr = chip_data["s2"]        # (13, 512, 512)
+mask_arr = chip_data.get("mask", np.zeros_like(s1_arr[0], dtype=np.int64))  # (512, 512)
 
 # Quantitative flood calculations
-# 1 pixel = 10m x 10m = 100 m^2 = 0.01 hectares = 0.0001 km^2
 total_px = mask_arr.size
 water_px = int((mask_arr == 1).sum())
 land_px = int((mask_arr == 0).sum())
@@ -104,14 +113,37 @@ water_km2 = water_px * 0.0001
 cloud_pct = (ignore_px / total_px) * 100
 water_pct = (water_px / valid_px * 100) if valid_px > 0 else 0
 
-# Baseline heuristic prediction for demonstration:
-# SAR threshold: water strongly specularly reflects radar away from sensor, so backscatter is very low.
-# Standard SAR flood threshold: VV normalized < 0.35 or NDWI > 0.0
-ndwi = (s2_arr[2] - s2_arr[7]) / (s2_arr[2] + s2_arr[7] + 1e-6)  # (Green - NIR) / (Green + NIR)
-pred_baseline = np.where(ndwi > 0.1, 1, 0)
-pred_baseline[mask_arr == -1] = -1
+# Model Selection
+model_choice = st.sidebar.selectbox(
+    "Prediction Engine",
+    [
+        "🤖 Multimodal Foundation Model (Person 1 Cross-Attention)",
+        "🛰️ Optical NDWI Heuristic Baseline",
+        "📡 SAR Backscatter Heuristic Baseline",
+    ]
+)
 
-metrics = compute_segmentation_metrics(pred_baseline, mask_arr, ignore_index=-1)
+try:
+    if model_choice == "🤖 Multimodal Foundation Model (Person 1 Cross-Attention)":
+        from src.models.predict import predict_chip
+        raw_pred = predict_chip(s1_arr, s2_arr)
+        pred_output = raw_pred.copy()
+        pred_output[mask_arr == -1] = -1
+        model_caption = "Multimodal Foundation Model (Optical-SAR Fusion)"
+    elif model_choice == "🛰️ Optical NDWI Heuristic Baseline":
+        ndwi = (s2_arr[2] - s2_arr[7]) / (s2_arr[2] + s2_arr[7] + 1e-6)
+        pred_output = np.where(ndwi > 0.1, 1, 0)
+        pred_output[mask_arr == -1] = -1
+        model_caption = "Baseline Optical NDWI (Index > 0.1)"
+    else:
+        pred_output = np.where(s1_arr[0] < 0.35, 1, 0)
+        pred_output[mask_arr == -1] = -1
+        model_caption = "Baseline SAR Threshold (Normalized Backscatter < 0.35)"
+
+    metrics = compute_segmentation_metrics(pred_output, mask_arr, ignore_index=-1)
+except Exception as e:
+    st.error(f"Error during model prediction: {e}")
+    st.stop()
 
 # Display 4 Multi-modal View Columns
 c1, c2, c3, c4 = st.columns(4)
@@ -138,10 +170,14 @@ with c2:
         s2_vis = np.clip((nir_composite - p2) / (p98 - p2 + 1e-6), 0.0, 1.0)
     else:
         st.caption("Normalized Difference Water Index (NDWI)")
-        s2_vis = np.clip((ndwi + 1.0) / 2.0, 0.0, 1.0)
+        ndwi_calc = (s2_arr[2] - s2_arr[7]) / (s2_arr[2] + s2_arr[7] + 1e-6)
+        s2_vis = np.clip((ndwi_calc + 1.0) / 2.0, 0.0, 1.0)
 
     fig2, ax2 = plt.subplots(figsize=(4, 4), dpi=120)
-    ax2.imshow(s2_vis)
+    if s2_vis.ndim == 2:
+        ax2.imshow(s2_vis, cmap="Blues")
+    else:
+        ax2.imshow(s2_vis)
     ax2.axis("off")
     st.pyplot(fig2)
     plt.close(fig2)
@@ -156,10 +192,10 @@ with c3:
     plt.close(fig3)
 
 with c4:
-    st.subheader("4. Baseline / Model Output")
-    st.caption(f"Segmentation prediction (Water IoU: {metrics['water_iou']:.2f})")
+    st.subheader("4. Model Prediction")
+    st.caption(f"{model_caption}\n(Water IoU: {metrics['water_iou']:.2f} | F1: {metrics['water_f1']:.2f})")
     fig4, ax4 = plt.subplots(figsize=(4, 4), dpi=120)
-    ax4.imshow(pred_baseline, cmap=MASK_CMAP, norm=MASK_NORM)
+    ax4.imshow(pred_output, cmap=MASK_CMAP, norm=MASK_NORM)
     ax4.axis("off")
     st.pyplot(fig4)
     plt.close(fig4)

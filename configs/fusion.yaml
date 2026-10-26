@@ -1,0 +1,19 @@
+# Multimodal Fusion Configuration (Person 1)
+fusion_method: "cross_attention" # Options: "concat", "cross_attention", "cloud_gated"
+
+# Fusion Module Hyperparameters
+optical_dim: 768
+sar_dim: 768
+fused_dim: 768
+fusion_heads: 8
+dropout: 0.1
+
+# Cloud-Adaptive Gating
+use_cloud_gate: true # Dynamically downweights optical in favor of SAR under high cloud probability
+
+# Training & Optimization
+learning_rate: 1.0e-4
+weight_decay: 0.05
+warmup_epochs: 3
+max_epochs: 30
+scheduler: "cosine"

@@ -1,0 +1,22 @@
+# Foundation Model Backbone Configuration (Person 1)
+model_name: "ibm-nasa-geospatial/Prithvi-EO-2.0-100M-TL"
+backbone_type: "vit"
+img_size: 224
+patch_size: 16
+in_channels_optical: 6
+in_channels_sar: 2
+embed_dim: 768
+depth: 12
+num_heads: 12
+mlp_ratio: 4.0
+
+# Temporal parameters
+time_steps: 1 # Set to > 1 for temporal change sequences (E5)
+
+# Hardware & RTX 2060 (6 GB VRAM) optimization flags
+freeze_backbone: true # Start with frozen backbone (Level 1)
+use_amp: true # Mixed precision (torch.float16)
+gradient_checkpointing: false # Set true during fine-tuning (Level 2)
+gradient_accumulation_steps: 4 # Physical batch 4 * 4 = 16 or 8 * 4 = 32
+batch_size: 4
+num_workers: 2

@@ -1,38 +1,42 @@
-# Byte-compiled / optimized / URL files
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Python Cache & Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
-*.ipynb_checkpoints/
+*.so
+.pytest_cache/
 
-# Virtual Environments
-.venv/
-env/
-venv/
-ENV/
-
-# Data Directories (Satellite imagery & checkpoints must NEVER be committed)
+# Data Directories (Never commit raw/processed remote sensing rasters)
 data/raw/
 data/processed/
-data/splits/*.parquet
 *.tif
 *.tiff
-*.nc
-*.hdf
 *.h5
-*.tar
+*.hdf
+*.nc
 *.tar.gz
 *.zip
+
+# PyTorch & Model Checkpoints
 *.pt
 *.pth
 *.ckpt
-*.bin
+checkpoints/
 
-# Output & Reports
-reports/visualizations/
-experiments/
+# Experiment Tracking & Logs
+mlruns/
+wandb/
+*.log
 
-# IDE / OS files
+# IDE & OS
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/

@@ -1,0 +1,149 @@
+{
+  "E1_optical_only": {
+    "exp_id": "E1",
+    "mode": "optical_only",
+    "best_val_water_iou": 0.6912064411817688,
+    "test_results": {
+      "test": {
+        "total_pixels_evaluated": 20517367,
+        "total_ignored_pixels": 3075593,
+        "accuracy": 0.9573419435349575,
+        "mean_iou": 0.8376704989869116,
+        "macro_f1": 0.9074377046374156,
+        "water_iou": 0.7233544487245581,
+        "water_precision": 0.792931137353168,
+        "water_recall": 0.8918183656839695,
+        "water_f1": 0.8394726334561151,
+        "confusion_matrix": [
+          [
+            17353640,
+            597626
+          ],
+          [
+            277605,
+            2288496
+          ]
+        ]
+      },
+      "bolivia": {
+        "total_pixels_evaluated": 2867815,
+        "total_ignored_pixels": 1064345,
+        "accuracy": 0.9395749028441513,
+        "mean_iou": 0.818071941563701,
+        "macro_f1": 0.895803007836478,
+        "water_iou": 0.7068757865677903,
+        "water_precision": 0.7540382533381451,
+        "water_recall": 0.9187097681944494,
+        "water_f1": 0.8282685736484504,
+        "confusion_matrix": [
+          [
+            2276639,
+            136312
+          ],
+          [
+            36976,
+            417888
+          ]
+        ]
+      }
+    }
+  },
+  "E4_sar_only": {
+    "exp_id": "E4",
+    "mode": "sar_only",
+    "best_val_water_iou": 0.5831382953694018,
+    "test_results": {
+      "test": {
+        "total_pixels_evaluated": 20517367,
+        "total_ignored_pixels": 3075593,
+        "accuracy": 0.936914712302022,
+        "mean_iou": 0.7603805696823516,
+        "macro_f1": 0.8531577458163139,
+        "water_iou": 0.5901494828516495,
+        "water_precision": 0.7589365447599921,
+        "water_recall": 0.726294093646353,
+        "water_f1": 0.7422566107348872,
+        "confusion_matrix": [
+          [
+            17359279,
+            591987
+          ],
+          [
+            702357,
+            1863744
+          ]
+        ]
+      },
+      "bolivia": {
+        "total_pixels_evaluated": 2867815,
+        "total_ignored_pixels": 1064345,
+        "accuracy": 0.9124981911315758,
+        "mean_iou": 0.7242870358783244,
+        "macro_f1": 0.8276203904188378,
+        "water_iou": 0.5463848387015138,
+        "water_precision": 0.7545289108896062,
+        "water_recall": 0.6645041155158465,
+        "water_f1": 0.7066608841823727,
+        "confusion_matrix": [
+          [
+            2314617,
+            98334
+          ],
+          [
+            152605,
+            302259
+          ]
+        ]
+      }
+    }
+  },
+  "E5_multimodal": {
+    "exp_id": "E5",
+    "mode": "multimodal",
+    "best_val_water_iou": 0.7353003970320576,
+    "test_results": {
+      "test": {
+        "total_pixels_evaluated": 20517367,
+        "total_ignored_pixels": 3075593,
+        "accuracy": 0.9608556010135219,
+        "mean_iou": 0.8439601414704863,
+        "macro_f1": 0.9113460767177712,
+        "water_iou": 0.7317440743477139,
+        "water_precision": 0.8366198570775556,
+        "water_recall": 0.853743480868446,
+        "water_f1": 0.8450949365867885,
+        "confusion_matrix": [
+          [
+            17523435,
+            427831
+          ],
+          [
+            375309,
+            2190792
+          ]
+        ]
+      },
+      "bolivia": {
+        "total_pixels_evaluated": 2867815,
+        "total_ignored_pixels": 1064345,
+        "accuracy": 0.9501439249045005,
+        "mean_iou": 0.8346649522268117,
+        "macro_f1": 0.9061022646179102,
+        "water_iou": 0.7268101611685918,
+        "water_precision": 0.8473984601949707,
+        "water_recall": 0.8362653452460516,
+        "water_f1": 0.8417950942293904,
+        "confusion_matrix": [
+          [
+            2344450,
+            68501
+          ],
+          [
+            74477,
+            380387
+          ]
+        ]
+      }
+    }
+  }
+}

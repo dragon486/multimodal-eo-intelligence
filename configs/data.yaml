@@ -1,0 +1,38 @@
+# Dataset & Data Contract Configuration
+image_size: 224
+
+optical:
+  bands:
+    - B02 # Blue
+    - B03 # Green
+    - B04 # Red
+    - B8A # Narrow NIR (20m resampled to 10m)
+    - B11 # SWIR-1 (20m resampled to 10m)
+    - B12 # SWIR-2 (20m resampled to 10m)
+  num_channels: 6
+  # Prithvi HLS pretraining normalization constants (channel means and stds)
+  mean: [0.0838, 0.1169, 0.1039, 0.2831, 0.2078, 0.1384]
+  std: [0.0465, 0.0538, 0.0655, 0.0935, 0.0886, 0.0763]
+
+sar:
+  bands:
+    - VV # Vertical-Vertical dual-pol backscatter (dB)
+    - VH # Vertical-Horizontal cross-pol backscatter (dB)
+  num_channels: 2
+  # Clipping ranges in decibels (dB)
+  clip_vv: [-30.0, 0.0]
+  clip_vh: [-35.0, -5.0]
+
+cloud_mask:
+  num_channels: 1 # 0: Clear, 1: Cloud/Shadow
+
+tasks:
+  land_cover:
+    dataset: "BigEarthNet-v2.0"
+    num_classes: 19
+    problem_type: "multi_label_classification"
+  flood_segmentation:
+    dataset: "Sen1Floods11"
+    num_classes: 3 # 0: Non-water, 1: Permanent water, 2: Flood water
+    ignore_index: -1
+    problem_type: "semantic_segmentation"

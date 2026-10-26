@@ -30,76 +30,15 @@ For Sen1Floods11 flood water mapping:
   ```python
   criterion = torch.nn.CrossEntropyLoss(ignore_index=-1)
   ```
-- **`0` : Non-water / Land Background** (Dominant class: ~98.3%)
-- **`1` : Water / Flood Extent** (Positive target class: ~0.59% to 2.5%)
+- **`0` : Non-water / Land Background** (Dominant class: ~89.83%)
+- **`1` : Water / Flood Extent** (Target class: ~10.17%)
 
 ---
 
-## 3. Critical Prioritized Checks for Person 1
+## 3. Class Imbalance Mitigation
 
-### Check 1: Severe Class Imbalance Mitigation
-- **The Problem:** Flood water pixels represent only **~0.59%** of valid pixels in typical scenes. An unweighted model can predict class `0` everywhere and achieve **98.3% accuracy** while having **0% Water IoU**.
-- **Action for Person 1:**
-  1. **Do NOT rank models by overall pixel accuracy alone.** Always prioritize **`water_iou`** and **`water_f1`**.
-  2. Use **Weighted Cross-Entropy** or **Compound Loss (Dice + CE)**:
-     ```python
-     # Option A: Weighted CrossEntropy with ignore_index
-     # Weights derived empirically via src/data/class_balance.py:
-     class_weights = torch.tensor([1.0, 50.0], dtype=torch.float32).to(device)
-     criterion = torch.nn.CrossEntropyLoss(weight=class_weights, ignore_index=-1)
-     ```
-     ```python
-     # Option B: Compound Dice + Weighted CE Loss
-     loss = dice_loss(pred, target, ignore_index=-1) + 0.5 * ce_loss(pred, target)
-     ```
-
-### Check 2: Split Integrity & Held-out Event Guarantee
-- **Disjoint Splits:** Verified 0 chip overlap between `train`, `val`, and `test`.
-- **Geographic Generalization Test:** The **Bolivia flood event is 100% excluded** from `flood_train_data.csv` (0 chips) and `flood_valid_data.csv` (0 chips). It is strictly reserved in `flood_bolivia_data.csv` (15 chips) to test whether your foundation model generalizes to unseen geographical terrains.
-
-### Check 3: Preprocessing Consistency Guarantee
-- The training data loader (`src/data/datasets.py`), the inspection tools (`src/data/inspect_raster.py`), and the interactive dashboard (`src/app/dashboard.py`) all import from the **single source of truth**: `src/data/preprocess.py`.
-- SAR decibel clipping range: `[-35.0 dB, +10.0 dB]` normalized to `[0.0, 1.0]`.
-- Optical surface reflectance: `DN / 10000.0` clipped to `[0.0, 1.0]`.
-- Identical band order is guaranteed across all phases.
-
----
-
-## 4. Normalization Formula Applied
-
-- **Sentinel-1 SAR:**
-  $$\text{dB} = \text{clip}(\text{dB}, -35.0, 10.0)$$
-  $$\text{S1}_{\text{norm}} = \frac{\text{dB} - (-35.0)}{10.0 - (-35.0)} \in [0.0, 1.0]$$
-
-- **Sentinel-2 Optical:**
-  $$\text{S2}_{\text{norm}} = \text{clip}\left(\frac{\text{DN}}{10000.0}, 0.0, 1.0\right)$$
-
----
-
-## 5. Evaluation Function Interface
-
-Person 1 can evaluate any model checkpoint against ground truth using the standardized metric functions implemented by Person 2:
-
+Empirically derived loss weights via `src/data/class_balance.py`:
 ```python
-from src.evaluation.metrics import compute_segmentation_metrics, MetricAccumulator
-
-# Batch evaluation
-metrics = compute_segmentation_metrics(
-    pred=pred_tensor,       # (B, H, W) or (H, W) argmax predictions
-    target=target_tensor,   # (B, H, W) or (H, W) labels
-    ignore_index=-1,
-    num_classes=2
-)
-# Returns: dict with 'mean_iou', 'water_iou', 'land_iou', 'water_f1', 'accuracy', etc.
-```
-
-For full test-epoch evaluation:
-```python
-accumulator = MetricAccumulator(num_classes=2, ignore_index=-1)
-for batch in test_loader:
-    preds = model(batch["s1"], batch["s2"]).argmax(dim=1)
-    accumulator.update(preds, batch["mask"])
-
-epoch_results = accumulator.compute()
-print(f"Validation Water IoU: {epoch_results['water_iou']:.4f}")
+weights = torch.tensor([0.5566, 4.9183], dtype=torch.float32).to(device)
+criterion = torch.nn.CrossEntropyLoss(weight=weights, ignore_index=-1)
 ```

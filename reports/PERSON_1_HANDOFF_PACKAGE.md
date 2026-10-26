@@ -204,3 +204,4 @@ Person 2 will immediately wire your `predict_chip` function into the live **Stre
 - [ ] **Step 3:** Implement the frozen encoder baseline (E2) and train a lightweight segmentation head with `ignore_index=-1`.
 - [ ] **Step 4:** Build the optical-SAR fusion module (E5) and log `water_iou` metrics.
 - [ ] **Step 5:** Export the best checkpoint and hand off `predict_chip` to Person 2 for the interactive dashboard.
+
